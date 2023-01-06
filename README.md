@@ -32,3 +32,76 @@
     * n-граммы – комбинации из n последовательных терминов для 
 упрощения распознавания текстового содержание. Эта модель определяет и 
 сохраняет смежные последовательности слов в тексте.
+
+3. *Векторизация.* Векторизация – замена токенов на цифры, 
+сопоставление цифровых векторов с полученными ранее токенами. Существуют несколько методов кодирования: 
+    - One-Hot Encoding – это метод кодирования категориальных переменных в 
+числовые данные, с которыми могут работать алгоритмы машинного обучения. 
+Может применяться как кодировщик каждого токена (по одному символу 
+натокен) или кодировать только соответствующие токену элементы, остальные 
+приравнивать к нулю.
+    - Embedding – числовые векторы, которые получены из слов или других 
+языковых сущностей. Каждому токену сопоставляется вектор, размерность 
+которого ниже чем у One-Hot Encoding.
+
+# Анализ тотальности текста в Tensorflow и Keras
+
+1. Данные
+
+Будем использовать датасет, который содержит отзывы на товары с Amazon (именно на книги). Это набор 
+достаточно популярный при обучении нейронным сетям и другим методам 
+машинного обучения, хоть и считается немного устаревшим.
+
+2. Подготовка к обучению
+
+Данные были расположены в файле "all.txt", которые имели вид:
+```
+<review>
+<unique_id>
+0345467078:too_much_filler:bonner_'62
+</unique_id>
+<unique_id>
+20951
+</unique_id>
+<asin>
+0345467078
+</asin>
+<product_name>
+Rage: An Alex Delaware Novel (Alex Delaware Novels (Paperback)): Books: Jonathan Kellerman
+</product_name>
+<product_type>
+books
+</product_type>
+<product_type>
+books
+</product_type>
+<helpful>
+7 of 8
+</helpful>
+<rating>
+2.0
+</rating>
+<title>
+Too Much Filler
+</title>
+<date>
+April 22, 2006
+</date>
+<reviewer>
+Bonner '62
+</reviewer>
+<reviewer_location>
+Virginia
+</reviewer_location>
+<review_text>
+All throughtout this book Alex Delaware and his police friend Milo never stop ruminating over every new fact they uncover.  They have endless discussions on how a new tidbit might fit into the overall picture.  The reader longs for the pair to actually do something.  In the end the author walks away without even tying up all the main strings.  That is really dirty pool after making the reader wade through all the yakking.  I read and enjoyed several of the early Alex Delaware books and then quit looking for new ones, now I know why
+</review_text>
+</review>
+```
+
+Для анализа нам необходимы отзывы, которые заключены в </review_text></review_text>. Поэтому из файла мы извлекаем только эти данные. В программе это сделано с помощью регулярных выражений:
+```
+import re
+result = ' '.join(re.findall(r'<review_text>([^<>]+)</review_text>', texts_true))
+```
+Потом убираем переносы строк - result = result.replace('\n', ' ').
