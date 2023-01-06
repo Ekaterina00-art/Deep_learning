@@ -113,8 +113,70 @@ All throughtout this book Alex Delaware and his police friend Milo never stop ru
 ```
 
 Для анализа нам необходимы отзывы, которые заключены в </review_text></review_text>. Поэтому из файла мы извлекаем только эти данные. В программе это сделано с помощью регулярных выражений:
-```
+```python
 import re
 result = ' '.join(re.findall(r'<review_text>([^<>]+)</review_text>', texts_true))
 ```
 Потом убираем переносы строк - result = result.replace('\n', ' ').
+
+3. Листинг программы
+
+Давайте теперь посмотрим, как можно сформировать такой тензор. Вначале загрузим тексты с отзывами.
+Теперь нам нужно разбить эти высказывания на слова. Для этого воспользуемся уже знакомым инструментом Tokenizer и положим, что максимальное число слов будет равно 20000:
+```python
+maxWordsCount = 20000
+tokenizer = Tokenizer(num_words=maxWordsCount, filters='!–"—#$%&amp;()*+,-./:;<=>?@[\\]^_`{|}~\t\n\r«»',
+                         lower=True, split=' ', char_level=False)
+tokenizer.fit_on_texts(result)
+
+word_2_index = tokenizer.word_index
+word_2_index.items()
+```
+По идее, мы здесь могли бы и не задавать максимальное число слов, тогда эта величина была бы определена автоматически при парсинге текста. Но данный параметр имеет один существенный плюс: из всех найденных слов мы оставляем 19999 наиболее часто встречаемых (maxWordsCount-1), то есть, отбрасываем редкие слова, которые особо не нужны при обучении НС.
+Итак, мы разбили текст на слова и для примера выведем их начальный список с частотами появления:
+```python
+dist = list(tokenizer.word_counts.items())
+print(dist[:10])
+print(result[0][:100])
+```
+Далее, преобразуем текст в последовательность чисел в соответствии с полученным словарем. Для этого используется специальный метод класса Tokenizer:
+```python
+data = tokenizer.texts_to_sequences(result)
+```
+На выходе получим двумерный массив чисел объекта numpy. Теперь, нам нужно выровнять все эти векторы до длины max_text_len. Для этого используется еще один встроенный метод pad_sequences, который обрезает массив data до длины max_text_len и добавляет нули для коротких векторов:
+```python
+max_text_len = 190
+data_pad = pad_sequences(data, maxlen=max_text_len)
+print(data_pad)
+print(data_pad.shape)
+```
+Осталось создать модель рекуррентной сети. Мы воспользуемся рекуррентным слоем LSTM. Для его создания в Keras используется класс:
+
+*keras.layers.LSTM(units, …)*
+
+Cоздадим LSTM-слой с 64 нейронами. Тогда размерность выходного вектора будет равна 64 элемента. Далее, добавим еще один такой же слой с 32 нейронами. У нас получится стек из двух рекуррентных слоев. На выходе поставим полносвязный слой с двумя нейронами и функцией активации softmax. Определим оптимизацию по Adam с шагом сходимости 0,0001 (одна десятитысячная):
+```python
+model = Sequential()
+model.add(Embedding(maxWordsCount, 128, input_length = max_text_len))
+model.add(LSTM(64, activation='tanh', return_sequences=True))
+model.add(LSTM(32, activation='tanh'))
+model.add(Dense(2, activation='softmax'))
+model.summary()
+ 
+model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=Adam(0.0001))
+
+history = model.fit(X_train, Y_train, batch_size=32, epochs=25, validation_data=(X_test, Y_test))
+
+scores = model.evaluate(X_test, Y_test, verbose=1)
+model.save('en-de-model.h5')
+```
+Сформируем какой-нибудь текст и преобразуем его во входной формат нашей сети, а также пропускаем входной вектор через сеть и на выходе получаем результат:
+```python
+word = 'good'
+
+data = tokenizer.texts_to_sequences(word)
+data_pad = pad_sequences(data, maxlen=max_text_len)
+print('Номер слова', data) 
+#print('Вектор для слова', data_pad)
+model.predict(data_pad, batch_size= 5, verbose=1)
+```
