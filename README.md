@@ -170,6 +170,8 @@ history = model.fit(X_train, Y_train, batch_size=32, epochs=25, validation_data=
 scores = model.evaluate(X_test, Y_test, verbose=1)
 model.save('en-de-model.h5')
 ```
+Сеть мы сохраняем. Структура сохраняется в формате JSON, а веса записываются в файл формата h5.
+
 Сформируем какой-нибудь текст и преобразуем его во входной формат нашей сети, а также пропускаем входной вектор через сеть и на выходе получаем результат:
 ```python
 word = 'good'
